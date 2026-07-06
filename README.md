@@ -1,14 +1,34 @@
 # SentinelCM
 
-Lightweight Open-Source SIEM for Centralized Configuration and Integrity Monitoring.
+Lightweight Open Source SIEM for Centralized Configuration and Integrity Monitoring.
 
-Developed as a Final Year Project at Superior University.
+## Features
+
+- Centralized Log Collection
+- Configuration Integrity Monitoring
+- Real-Time Alerts
+- Unified Dashboard
+- Windows & Linux Agent
+- REST API
+- MongoDB Storage
+- JWT Authentication
 
 ## Tech Stack
 
+Backend:
 - FastAPI
-- React
 - MongoDB
 - Python
-- JWT
-- WebSockets
+
+Frontend:
+- React
+- Tailwind CSS
+
+Agent:
+- Python
+
+Database:
+- MongoDB
+
+Version:
+0.1.0
