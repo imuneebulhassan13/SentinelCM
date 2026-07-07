@@ -1,25 +1,22 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 
-class Settings(BaseSettings):
-    APP_NAME: str
-    APP_VERSION: str
+class Settings:
 
-    HOST: str
-    PORT: int
+    APP_NAME = os.getenv("APP_NAME")
 
-    MONGO_URI: str
-    DATABASE_NAME: str
+    APP_VERSION = os.getenv("APP_VERSION")
 
-    SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
+    MONGO_URI = os.getenv("MONGO_URI")
 
-    LOG_LEVEL: str
+    DATABASE_NAME = os.getenv("DATABASE_NAME")
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore"
-    )
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
+    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+
+    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 settings = Settings()
