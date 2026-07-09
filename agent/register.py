@@ -11,4 +11,6 @@ def register_agent(data):
         timeout=10
     )
 
+    response.raise_for_status()
+
     return response.json()
