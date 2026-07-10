@@ -1,14 +1,16 @@
 import time
 
-from config import AGENT_VERSION, HEARTBEAT_INTERVAL
+from config.config import AGENT_VERSION, HEARTBEAT_INTERVAL
 
 from system_info import get_system_information
 
-from register import register_agent
+from core.register import register_agent
 
-from heartbeat import send_heartbeat
+from core.heartbeat import send_heartbeat
 
-from config_manager import (
+from core.api import post
+
+from config.config_manager import (
     config_exists,
     load_config,
     save_config
@@ -54,3 +56,24 @@ while True:
     print(result)
 
     time.sleep(HEARTBEAT_INTERVAL)
+
+    
+#test   
+    from collectors.windows_events import read_events
+
+
+    events = read_events()
+
+    print(f"Total Events: {len(events)}")
+
+    for event in events:
+
+        print("-" * 60)
+
+        print("Record Number :", event.RecordNumber)
+
+        print("Event ID      :", event.EventID & 0xFFFF)
+
+        print("Source        :", event.SourceName)
+
+        print("Time          :", event.TimeGenerated)    

@@ -1,4 +1,4 @@
-from app.db import database as db
+import app.db.database as db
 
 
 def get_user_collection():

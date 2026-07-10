@@ -11,6 +11,7 @@ from app.api.routes.heartbeat import router as heartbeat_router
 
 import asyncio
 from app.services.monitor_service import monitor_agents
+from app.api.routes.log import router as log_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,6 +40,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(agent_router)
 app.include_router(heartbeat_router)
+app.include_router(log_router)
 
 @app.get("/")
 async def root():

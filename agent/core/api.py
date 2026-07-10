@@ -1,13 +1,13 @@
 import requests
 
-from config import SERVER_URL
+from config.config import SERVER_URL
 
 
-def register_agent(data):
+def post(endpoint: str, payload: dict):
 
     response = requests.post(
-        f"{SERVER_URL}/agents/register",
-        json=data,
+        f"{SERVER_URL}{endpoint}",
+        json=payload,
         timeout=10
     )
 
