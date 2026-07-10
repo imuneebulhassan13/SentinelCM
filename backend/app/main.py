@@ -9,14 +9,25 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.agent import router as agent_router
 from app.api.routes.heartbeat import router as heartbeat_router
 
+import asyncio
+from app.services.monitor_service import monitor_agents
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Starting SentinelCM Backend...")
-    await connect_to_mongo()
-    yield
-    logger.info("Stopping SentinelCM Backend...")
-    await close_mongo_connection()
 
+    logger.info("Starting SentinelCM Backend...")
+
+    await connect_to_mongo()
+
+    asyncio.create_task(
+        monitor_agents()
+    )
+
+    yield
+
+    logger.info("Stopping SentinelCM Backend...")
+
+    await close_mongo_connection()
 
 app = FastAPI(
     title=settings.APP_NAME,
