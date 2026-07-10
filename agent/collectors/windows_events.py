@@ -1,27 +1,37 @@
 import win32evtlog
 
+from state.state_manager import (
+    load_state,
+    save_state,
+)
 
-def read_events(limit=10):
+
+def read_events(channel):
+
+    state = load_state()
+
+    last_record = state.get(channel, 0)
 
     server = "localhost"
 
-    log_type = "System"
-
-    hand = win32evtlog.OpenEventLog(server, log_type)
+    handle = win32evtlog.OpenEventLog(
+        server,
+        channel
+    )
 
     flags = (
         win32evtlog.EVENTLOG_BACKWARDS_READ
         | win32evtlog.EVENTLOG_SEQUENTIAL_READ
     )
 
-    events = []
+    new_events = []
 
-    total = 0
+    highest_record = last_record
 
-    while total < limit:
+    while True:
 
         records = win32evtlog.ReadEventLog(
-            hand,
+            handle,
             flags,
             0
         )
@@ -29,15 +39,32 @@ def read_events(limit=10):
         if not records:
             break
 
+        stop = False
+
         for event in records:
 
-            events.append(event)
+            record = event.RecordNumber
 
-            total += 1
-
-            if total >= limit:
+            if record <= last_record:
+                stop = True
                 break
 
-    win32evtlog.CloseEventLog(hand)
+            new_events.append(event)
 
-    return events
+            if record > highest_record:
+                highest_record = record
+
+        if stop:
+            break
+
+    win32evtlog.CloseEventLog(handle)
+
+    if highest_record > last_record:
+        save_state(
+            channel,
+            highest_record
+        )
+
+    new_events.reverse()
+
+    return new_events

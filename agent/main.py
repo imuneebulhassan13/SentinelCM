@@ -10,6 +10,8 @@ from core.heartbeat import send_heartbeat
 
 from core.api import post
 
+from collectors.channels import WINDOWS_CHANNELS
+
 from config.config_manager import (
     config_exists,
     load_config,
@@ -62,18 +64,21 @@ while True:
     from collectors.windows_events import read_events
 
 
-    events = read_events()
+    for channel in WINDOWS_CHANNELS:
 
-    print(f"Total Events: {len(events)}")
+        try:
+            events = read_events(channel)
 
-    for event in events:
+            print(f"{channel}: {len(events)} new event(s)")
 
-        print("-" * 60)
+            for event in events:
+                print("-" * 60)
+                print("Channel :", channel)
+                print("Record :", event.RecordNumber)
 
-        print("Record Number :", event.RecordNumber)
+        except Exception as e:
+            print(f"{channel} Error: {e}")
 
-        print("Event ID      :", event.EventID & 0xFFFF)
+    from state.state_manager import load_state
 
-        print("Source        :", event.SourceName)
-
-        print("Time          :", event.TimeGenerated)    
+    print(load_state())
