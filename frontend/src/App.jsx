@@ -5,6 +5,8 @@ function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
+  const [activePage, setActivePage] = useState('dashboard')
+
   useEffect(() => {
     fetch('http://127.0.0.1:8000/dashboard/summary', {
       headers: {
@@ -59,15 +61,21 @@ function App() {
           <div className="nav-section">
             <span className="nav-label">MONITORING</span>
 
-            <button className="nav-item active">
-              <span className="nav-icon">⌂</span>
-              Dashboard
+            <button
+               className={`nav-item ${activePage === 'dashboard' ? 'active' : ''}`}
+               onClick={() => setActivePage('dashboard')}
+               >
+                <span className="nav-icon">⌂</span>
+               Dashboard
             </button>
 
-            <button className="nav-item">
+            <button
+               className={`nav-item ${activePage === 'logs' ? 'active' : ''}`}
+               onClick={() => setActivePage('logs')}
+              >
               <span className="nav-icon">≡</span>
               Live Logs
-            </button>
+             </button>
 
             <button className="nav-item">
               <span className="nav-icon">!</span>
