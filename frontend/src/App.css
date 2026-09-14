@@ -687,3 +687,277 @@ button {
     min-width: 650px;
   }
 }
+
+/* =========================
+   LIVE LOGS TABLE
+========================= */
+
+.logs-table-body {
+  width: 100%;
+}
+
+.logs-table-row {
+  display: grid;
+  grid-template-columns: 170px 100px 190px minmax(300px, 1fr) 140px;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-bottom: 1px solid #1e293b;
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.logs-table-row:last-child {
+  border-bottom: none;
+}
+
+.logs-table-row > span {
+  min-width: 0;
+}
+
+.logs-table-row > span:first-child {
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.logs-table-row > span:nth-child(2) {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.logs-table-row > span:nth-child(3) {
+  color: #60a5fa;
+  overflow-wrap: anywhere;
+}
+
+.log-event {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.log-event strong {
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.log-event small {
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.logs-table-row > span:last-child {
+  color: #64748b;
+  font-family: monospace;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+/* Responsive */
+
+@media (max-width: 1100px) {
+  .logs-panel {
+    overflow-x: auto;
+  }
+
+  .logs-table-header,
+  .logs-table-row {
+    min-width: 900px;
+  }
+}
+
+/* =========================
+   LOG TABLE FINAL LAYOUT
+========================= */
+
+.logs-table {
+  min-width: 1000px;
+}
+
+.logs-table-header,
+.logs-table-row {
+  display: grid;
+  grid-template-columns: 165px 105px 200px minmax(380px, 1fr) 120px;
+  gap: 16px;
+  align-items: center;
+}
+
+.logs-table-header {
+  padding: 14px 18px;
+}
+
+.logs-table-row {
+  padding: 15px 18px;
+  border-bottom: 1px solid #1e293b;
+}
+
+.logs-table-row:last-child {
+  border-bottom: none;
+}
+
+.log-timestamp {
+  color: #94a3b8;
+  white-space: nowrap;
+  font-size: 10px;
+}
+
+.log-source {
+  color: #60a5fa;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.log-event {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.log-event strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #e2e8f0;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-event small {
+  display: block;
+  max-width: 100%;
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.5;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-agent {
+  color: #64748b;
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.level-information {
+  background: #172554;
+  color: #60a5fa;
+}
+
+.level-warning {
+  background: #422006;
+  color: #fbbf24;
+}
+
+.level-error {
+  background: #450a0a;
+  color: #f87171;
+}
+
+/* Horizontal scrolling for smaller screens */
+
+.logs-panel {
+  overflow-x: auto;
+}
+
+@media (max-width: 1100px) {
+  .logs-table {
+    min-width: 1000px;
+  }
+}
+
+/* =========================
+   LIVE LOGS - FINAL OVERRIDE
+========================= */
+
+.logs-panel {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.logs-table {
+  width: 100%;
+  min-width: 0;
+}
+
+.logs-table-header {
+  display: grid !important;
+  grid-template-columns: 155px 85px 170px minmax(0, 1fr) 105px !important;
+  gap: 16px !important;
+  align-items: center !important;
+  padding: 14px 18px !important;
+  box-sizing: border-box;
+}
+
+.logs-table-row {
+  display: grid !important;
+  grid-template-columns: 155px 85px 170px minmax(0, 1fr) 105px !important;
+  gap: 16px !important;
+  align-items: center !important;
+  padding: 14px 18px !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid #1e293b;
+}
+
+.logs-table-row > span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.log-timestamp {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-source {
+  white-space: nowrap !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-event {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.log-event strong {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.log-event small {
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.log-agent {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.level-badge {
+  display: inline-flex !important;
+}

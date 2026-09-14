@@ -6,6 +6,12 @@ function App() {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
   const [activePage, setActivePage] = useState('dashboard')
+  const [logs, setLogs] = useState([])
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError, setLogsError] = useState(null)
+  const [logSearch, setLogSearch] = useState('')
+  const [logLevel, setLogLevel] = useState('all')
+  const [logSource, setLogSource] = useState('all')
 
   useEffect(() => {
     fetch('http://127.0.0.1:8000/dashboard/summary', {
@@ -22,6 +28,53 @@ function App() {
       .then((result) => setData(result))
       .catch((err) => setError(err.message))
   }, [])
+
+  useEffect(() => {
+  if (activePage !== 'logs') return
+
+  const fetchLogs = async () => {
+    setLogsLoading(true)
+    setLogsError(null)
+
+    try {
+      const params = new URLSearchParams()
+
+      if (logSearch.trim()) {
+        params.append('search', logSearch.trim())
+      }
+
+      if (logLevel !== 'all') {
+        params.append('level', logLevel)
+      }
+
+      if (logSource !== 'all') {
+        params.append('source', logSource)
+      }
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/logs/?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const result = await response.json()
+      setLogs(result.logs || [])
+    } catch (err) {
+      setLogsError(err.message)
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
+  fetchLogs()
+}, [activePage, logSearch, logLevel, logSource])
 
   if (error) {
     return (
@@ -302,19 +355,29 @@ function App() {
               <div className="logs-toolbar">
 
                 <input
-                  type="text"
-                  placeholder="Search logs..."
-                  className="logs-search"
+                   type="text"
+                   placeholder="Search logs..."
+                   className="logs-search"
+                   value={logSearch}
+                   onChange={(e) => setLogSearch(e.target.value)}
                 />
 
-                <select className="logs-filter">
+              <select
+                  className="logs-filter"
+                  value={logLevel}
+                  onChange={(e) => setLogLevel(e.target.value)}
+                >
                   <option value="all">All Levels</option>
                   <option value="Information">Information</option>
                   <option value="Warning">Warning</option>
                   <option value="Error">Error</option>
-                </select>
+              </select>
 
-                <select className="logs-filter">
+                <select
+                  className="logs-filter"
+                  value={logSource}
+                  onChange={(e) => setLogSource(e.target.value)}
+                >
                   <option value="all">All Sources</option>
                   <option value="Windows">Windows</option>
                   <option value="Linux">Linux</option>
@@ -327,22 +390,81 @@ function App() {
 
               <div className="logs-panel">
 
-                <div className="logs-table-header">
-                  <span>Timestamp</span>
-                  <span>Level</span>
-                  <span>Source</span>
-                  <span>Event</span>
-                  <span>Agent</span>
-                </div>
+                  <div className="logs-table">
 
-                <div className="logs-empty">
-                  <strong>No logs to display</strong>
-                  <span>
-                    Live security events will appear here.
-                  </span>
-                </div>
+                    <div className="logs-table-header">
+                      <span>Timestamp</span>
+                      <span>Level</span>
+                      <span>Source</span>
+                      <span>Event</span>
+                      <span>Agent</span>
+                    </div>
 
-              </div>
+                    {logsLoading ? (
+                      <div className="logs-empty">
+                        <strong>Loading logs...</strong>
+                        <span>Fetching security events from SentinelCM backend.</span>
+                      </div>
+                    ) : logsError ? (
+                      <div className="logs-empty">
+                        <strong>Failed to load logs</strong>
+                        <span>{logsError}</span>
+                      </div>
+                    ) : logs.length === 0 ? (
+                      <div className="logs-empty">
+                        <strong>No logs to display</strong>
+                        <span>No security events match the current filters.</span>
+                      </div>
+                    ) : (
+                      <div className="logs-table-body">
+
+                        {logs.map((log) => (
+
+                          <div className="logs-table-row" key={log._id}>
+
+                            <span className="log-timestamp">
+                              {new Date(log.timestamp).toLocaleString()}
+                            </span>
+
+                            <span>
+                              <strong className={`level-badge level-${log.level.toLowerCase()}`}>
+                                {log.level}
+                              </strong>
+                            </span>
+
+                            <span className="log-source">
+                              {log.source}
+                            </span>
+
+                            <span className="log-event">
+
+                              <strong>{log.log_name}</strong>
+
+                              <small title={log.message}>
+                                {log.message}
+                              </small>
+
+                            </span>
+
+                            <span
+                              className="log-agent"
+                              title={log.agent_id}
+                            >
+                              {log.agent_id
+                                ? `${log.agent_id.slice(0, 8)}...`
+                                : 'N/A'}
+                            </span>
+
+                          </div>
+
+                        ))}
+
+                      </div>
+                    )}
+
+                  </div>
+
+                </div>
 
             </section>
           )}
