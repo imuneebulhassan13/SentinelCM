@@ -23,83 +23,239 @@ function App() {
 
   if (error) {
     return (
-      <div className="dashboard">
-        <h1>SentinelCM</h1>
-        <div className="error">
-          Failed to load dashboard: {error}
-        </div>
+      <div className="error">
+        <h2>SentinelCM</h2>
+        <p>Failed to load dashboard: {error}</p>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="dashboard">
-        <h1>SentinelCM</h1>
+      <div className="loading">
+        <h2>SentinelCM</h2>
         <p>Loading dashboard...</p>
       </div>
     )
   }
 
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
-        <div>
-          <h1>SentinelCM</h1>
-          <p>Security Information & Configuration Monitoring</p>
+    <div className="app-layout">
+
+      {/* Sidebar */}
+      <aside className="sidebar">
+
+        <div className="sidebar-brand">
+          <div className="brand-icon">SC</div>
+
+          <div>
+            <h1>SentinelCM</h1>
+            <span>SIEM Platform</span>
+          </div>
         </div>
 
-        <div className="status">
-          ● System Online
+        <nav className="sidebar-nav">
+
+          <div className="nav-section">
+            <span className="nav-label">MONITORING</span>
+
+            <button className="nav-item active">
+              <span className="nav-icon">⌂</span>
+              Dashboard
+            </button>
+
+            <button className="nav-item">
+              <span className="nav-icon">≡</span>
+              Live Logs
+            </button>
+
+            <button className="nav-item">
+              <span className="nav-icon">!</span>
+              Alerts
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <span className="nav-label">ASSETS</span>
+
+            <button className="nav-item">
+              <span className="nav-icon">▣</span>
+              Agents
+            </button>
+
+            <button className="nav-item">
+              <span className="nav-icon">◈</span>
+              Configuration
+            </button>
+          </div>
+
+          <div className="nav-section">
+            <span className="nav-label">SYSTEM</span>
+
+            <button className="nav-item">
+              <span className="nav-icon">⚙</span>
+              Settings
+            </button>
+          </div>
+
+        </nav>
+
+        <div className="sidebar-footer">
+
+          <div className="user-card">
+            <div className="user-avatar">A</div>
+
+            <div className="user-info">
+              <strong>Administrator</strong>
+              <span>Admin</span>
+            </div>
+          </div>
+
+          <button className="logout-button">
+            Logout
+          </button>
+
         </div>
-      </header>
 
-      <main>
-        <section className="stats-grid">
-          <div className="card">
-            <span>Total Agents</span>
-            <strong>{data.agents.total}</strong>
+      </aside>
+
+      {/* Main Area */}
+      <div className="main-area">
+
+        <header className="topbar">
+
+          <div>
+            <h2>Security Overview</h2>
+            <p>Centralized monitoring status and system activity</p>
           </div>
 
-          <div className="card">
-            <span>Online Agents</span>
-            <strong>{data.agents.online}</strong>
+          <div className="system-status">
+            <span className="status-dot"></span>
+            System Online
           </div>
 
-          <div className="card">
-            <span>Offline Agents</span>
-            <strong>{data.agents.offline}</strong>
-          </div>
+        </header>
 
-          <div className="card">
-            <span>Total Logs</span>
-            <strong>{data.logs.total}</strong>
-          </div>
+        <main className="dashboard-main">
 
-          <div className="card">
-            <span>Error Logs</span>
-            <strong>{data.logs.error}</strong>
-          </div>
+          {/* Statistics */}
 
-          <div className="card">
-            <span>Warning Logs</span>
-            <strong>{data.logs.warning}</strong>
-          </div>
+          <section className="stats-grid">
 
-          <div className="card">
-            <span>Information Logs</span>
-            <strong>{data.logs.information}</strong>
-          </div>
-        </section>
+            <div className="card">
+              <span>Total Agents</span>
+              <strong>{data.agents.total}</strong>
+            </div>
 
-        <section className="overview">
-          <h2>System Overview</h2>
-          <p>
-            SentinelCM is monitoring connected systems and collecting
-            security events from registered agents.
-          </p>
-        </section>
-      </main>
+            <div className="card">
+              <span>Online Agents</span>
+              <strong>{data.agents.online}</strong>
+            </div>
+
+            <div className="card">
+              <span>Offline Agents</span>
+              <strong>{data.agents.offline}</strong>
+            </div>
+
+            <div className="card">
+              <span>Total Logs</span>
+              <strong>{data.logs.total}</strong>
+            </div>
+
+            <div className="card">
+              <span>Error Logs</span>
+              <strong>{data.logs.error}</strong>
+            </div>
+
+            <div className="card">
+              <span>Warning Logs</span>
+              <strong>{data.logs.warning}</strong>
+            </div>
+
+            <div className="card">
+              <span>Information Logs</span>
+              <strong>{data.logs.information}</strong>
+            </div>
+
+          </section>
+
+          {/* Dashboard Panels */}
+
+          <section className="dashboard-grid">
+
+            <div className="panel">
+
+              <div className="panel-header">
+                <div>
+                  <h3>System Overview</h3>
+                  <p>Current SentinelCM system health</p>
+                </div>
+              </div>
+
+              <div className="health-list">
+
+                <div className="health-item">
+                  <span>Backend API</span>
+                  <strong>Online</strong>
+                </div>
+
+                <div className="health-item">
+                  <span>MongoDB</span>
+                  <strong>Connected</strong>
+                </div>
+
+                <div className="health-item">
+                  <span>Log Collection</span>
+                  <strong>Active</strong>
+                </div>
+
+                <div className="health-item">
+                  <span>Agent Monitoring</span>
+                  <strong>
+                    {data.agents.total > 0 ? 'Active' : 'Waiting'}
+                  </strong>
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="panel">
+
+              <div className="panel-header">
+                <div>
+                  <h3>Log Status</h3>
+                  <p>Collected security events</p>
+                </div>
+              </div>
+
+              <div className="health-list">
+
+                <div className="health-item">
+                  <span>Errors</span>
+                  <strong>{data.logs.error}</strong>
+                </div>
+
+                <div className="health-item">
+                  <span>Warnings</span>
+                  <strong>{data.logs.warning}</strong>
+                </div>
+
+                <div className="health-item">
+                  <span>Information</span>
+                  <strong>{data.logs.information}</strong>
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        </main>
+
+      </div>
+
     </div>
   )
 }
