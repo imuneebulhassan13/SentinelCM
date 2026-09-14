@@ -12,6 +12,8 @@ from core.api import post
 
 from collectors.channels import WINDOWS_CHANNELS
 
+from collectors.event_parser import parse_event
+
 from config.config_manager import (
     config_exists,
     load_config,
@@ -59,26 +61,34 @@ while True:
 
     time.sleep(HEARTBEAT_INTERVAL)
 
-    
-#test   
+      
     from collectors.windows_events import read_events
 
-
     for channel in WINDOWS_CHANNELS:
-
         try:
             events = read_events(channel)
 
             print(f"{channel}: {len(events)} new event(s)")
 
             for event in events:
-                print("-" * 60)
-                print("Channel :", channel)
-                print("Record :", event.RecordNumber)
+                parsed_log = parse_event(
+                    event,
+                    agent_id,
+                    channel
+                )
+
+                result = post(
+                    "/logs/",
+                    parsed_log
+                )
+
+                print(
+                    f"{channel} Event {event.RecordNumber} sent:",
+                    result
+                )
 
         except Exception as e:
             print(f"{channel} Error: {e}")
 
     from state.state_manager import load_state
-
     print(load_state())

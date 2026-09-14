@@ -1,15 +1,21 @@
-from collectors.windows_events import read_application_logs
+from collectors.windows_events import read_events
+from collectors.channels import WINDOWS_CHANNELS
 
-logs = read_application_logs()
+for channel in WINDOWS_CHANNELS:
 
-print(f"Total Logs: {len(logs)}")
+    print(f"\n===== {channel} Logs =====")
 
-for log in logs:
+    try:
+        logs = read_events(channel)
 
-    print("-----------------------")
+        print(f"Total New Logs: {len(logs)}")
 
-    print(log.EventID)
+        for event in logs[:5]:
+            print("-----------------------")
+            print("Record :", event.RecordNumber)
+            print("Event ID :", event.EventID)
+            print("Source :", event.SourceName)
+            print("Time :", event.TimeGenerated)
 
-    print(log.SourceName)
-
-    print(log.TimeGenerated)
+    except Exception as e:
+        print(f"{channel} Error: {e}")
