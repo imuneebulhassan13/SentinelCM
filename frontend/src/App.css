@@ -503,3 +503,187 @@ button {
     display: none;
   }
 }
+
+/* =========================
+   LIVE LOGS PAGE
+========================= */
+
+.logs-page {
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+
+  color: #f8fafc;
+  font-size: 20px;
+}
+
+.page-header p {
+  margin: 5px 0 0;
+
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Search & Filters */
+
+.logs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin-bottom: 16px;
+}
+
+.logs-search {
+  flex: 1;
+
+  min-width: 220px;
+
+  padding: 11px 13px;
+
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+
+  outline: none;
+
+  background: #0f172a;
+  color: #e2e8f0;
+
+  font-size: 12px;
+}
+
+.logs-search::placeholder {
+  color: #475569;
+}
+
+.logs-search:focus {
+  border-color: #2563eb;
+}
+
+.logs-filter {
+  min-width: 145px;
+
+  padding: 11px 12px;
+
+  border: 1px solid #1e293b;
+  border-radius: 7px;
+
+  outline: none;
+
+  background: #0f172a;
+  color: #94a3b8;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+.logs-filter:focus {
+  border-color: #2563eb;
+}
+
+/* Logs Panel */
+
+.logs-panel {
+  overflow: hidden;
+
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+
+  background: #0f172a;
+}
+
+/* Table Header */
+
+.logs-table-header {
+  display: grid;
+
+  grid-template-columns: 170px 120px 120px 1fr 150px;
+
+  gap: 12px;
+
+  padding: 14px 16px;
+
+  border-bottom: 1px solid #1e293b;
+
+  background: #0b1220;
+
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+
+/* Empty State */
+
+.logs-empty {
+  min-height: 260px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  color: #64748b;
+}
+
+.logs-empty strong {
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+.logs-empty span {
+  color: #475569;
+
+  font-size: 11px;
+}
+
+/* Responsive Logs */
+
+@media (max-width: 900px) {
+  .logs-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .logs-search {
+    flex-basis: 100%;
+  }
+
+  .logs-table-header {
+    grid-template-columns: 150px 100px 110px 1fr 120px;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .logs-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .logs-search,
+  .logs-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .logs-panel {
+    overflow-x: auto;
+  }
+
+  .logs-table-header {
+    min-width: 650px;
+  }
+}
