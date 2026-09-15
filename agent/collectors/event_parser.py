@@ -46,7 +46,7 @@ def parse_event(event, agent_id, log_name):
     return {
         "agent_id": agent_id,
         "event_id": int(event.EventID),
-        "source": str(event.SourceName),
+        "source": "Windows",
         "level": level,
         "log_name": log_name,
         "message": message,

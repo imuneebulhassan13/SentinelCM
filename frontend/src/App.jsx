@@ -1,81 +1,212 @@
-
 import { useEffect, useState } from 'react'
 import './App.css'
+import Login from './login.jsx'
+
+const API_URL = 'http://127.0.0.1:8000'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authChecking, setAuthChecking] = useState(true)
+
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+
   const [activePage, setActivePage] = useState('dashboard')
+
   const [logs, setLogs] = useState([])
   const [logsLoading, setLogsLoading] = useState(false)
   const [logsError, setLogsError] = useState(null)
+
   const [logSearch, setLogSearch] = useState('')
   const [logLevel, setLogLevel] = useState('all')
   const [logSource, setLogSource] = useState('all')
 
-  useEffect(() => {
-    fetch('http://127.0.0.1:8000/dashboard/summary', {
+  /*
+   * Central API helper
+   *
+   * Automatically:
+   * - adds JWT token
+   * - detects 401
+   * - removes expired/invalid token
+   * - logs user out
+   */
+  const apiFetch = async (url, options = {}) => {
+    const token = localStorage.getItem('token')
+
+    const response = await fetch(url, {
+      ...options,
       headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
       },
     })
+
+    if (response.status === 401) {
+      localStorage.removeItem('token')
+      setIsAuthenticated(false)
+      setData(null)
+      setError(null)
+
+      throw new Error('Session expired. Please login again.')
+    }
+
+    return response
+  }
+
+  /*
+   * Check saved session when application starts/reloads
+   */
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+
+    if (!token) {
+      setIsAuthenticated(false)
+      setAuthChecking(false)
+      return
+    }
+
+    fetch(`${API_URL}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then(async (response) => {
+        if (response.status === 401) {
+          localStorage.removeItem('token')
+          setIsAuthenticated(false)
+          return
+        }
+
+        if (!response.ok) {
+          throw new Error('Authentication check failed')
+        }
+
+        setIsAuthenticated(true)
+      })
+      .catch(() => {
+        localStorage.removeItem('token')
+        setIsAuthenticated(false)
+      })
+      .finally(() => {
+        setAuthChecking(false)
+      })
+  }, [])
+
+  /*
+   * Load dashboard data
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    setError(null)
+
+    apiFetch(`${API_URL}/dashboard/summary`)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`API Error: ${response.status}`)
         }
+
         return response.json()
       })
-      .then((result) => setData(result))
-      .catch((err) => setError(err.message))
-  }, [])
-
-  useEffect(() => {
-  if (activePage !== 'logs') return
-
-  const fetchLogs = async () => {
-    setLogsLoading(true)
-    setLogsError(null)
-
-    try {
-      const params = new URLSearchParams()
-
-      if (logSearch.trim()) {
-        params.append('search', logSearch.trim())
-      }
-
-      if (logLevel !== 'all') {
-        params.append('level', logLevel)
-      }
-
-      if (logSource !== 'all') {
-        params.append('source', logSource)
-      }
-
-      const response = await fetch(
-        `http://127.0.0.1:8000/logs/?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
+      .then((result) => {
+        setData(result)
+      })
+      .catch((err) => {
+        if (err.message !== 'Session expired. Please login again.') {
+          setError(err.message)
         }
-      )
+      })
+  }, [isAuthenticated])
 
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`)
+  /*
+   * Load Live Logs
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (activePage !== 'logs') return
+
+    const fetchLogs = async () => {
+      setLogsLoading(true)
+      setLogsError(null)
+
+      try {
+        const params = new URLSearchParams()
+
+        if (logSearch.trim()) {
+          params.append('search', logSearch.trim())
+        }
+
+        if (logLevel !== 'all') {
+          params.append('level', logLevel)
+        }
+
+        if (logSource !== 'all') {
+          params.append('source', logSource)
+        }
+
+        const queryString = params.toString()
+
+        const response = await apiFetch(
+          `${API_URL}/logs/${queryString ? `?${queryString}` : ''}`
+        )
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`)
+        }
+
+        const result = await response.json()
+
+        setLogs(result.logs || [])
+      } catch (err) {
+        if (err.message === 'Session expired. Please login again.') {
+          setLogsError(null)
+        } else {
+          setLogsError(err.message)
+        }
+      } finally {
+        setLogsLoading(false)
       }
-
-      const result = await response.json()
-      setLogs(result.logs || [])
-    } catch (err) {
-      setLogsError(err.message)
-    } finally {
-      setLogsLoading(false)
     }
+
+    fetchLogs()
+  }, [
+    isAuthenticated,
+    activePage,
+    logSearch,
+    logLevel,
+    logSource,
+  ])
+
+  /*
+   * Authentication check screen
+   */
+  if (authChecking) {
+    return (
+      <div className="loading">
+        <h2>SentinelCM</h2>
+        <p>Checking session...</p>
+      </div>
+    )
   }
 
-  fetchLogs()
-}, [activePage, logSearch, logLevel, logSource])
+  /*
+   * Login screen
+   */
+  if (!isAuthenticated) {
+    return (
+      <Login
+        onLogin={() => {
+          setIsAuthenticated(true)
+          setData(null)
+          setError(null)
+        }}
+      />
+    )
+  }
 
+  /*
+   * Dashboard error
+   */
   if (error) {
     return (
       <div className="error">
@@ -85,6 +216,9 @@ function App() {
     )
   }
 
+  /*
+   * Dashboard loading
+   */
   if (!data) {
     return (
       <div className="loading">
@@ -176,7 +310,17 @@ function App() {
             </div>
           </div>
 
-          <button className="logout-button">
+          <button
+            className="logout-button"
+            onClick={() => {
+              localStorage.removeItem('token')
+              setIsAuthenticated(false)
+              setData(null)
+              setError(null)
+              setLogs([])
+              setLogsError(null)
+            }}
+          >
             Logout
           </button>
 
@@ -218,8 +362,6 @@ function App() {
 
           {activePage === 'dashboard' && (
             <>
-              {/* Statistics */}
-
               <section className="stats-grid">
 
                 <div className="card">
@@ -258,8 +400,6 @@ function App() {
                 </div>
 
               </section>
-
-              {/* Dashboard Panels */}
 
               <section className="dashboard-grid">
 
@@ -355,14 +495,14 @@ function App() {
               <div className="logs-toolbar">
 
                 <input
-                   type="text"
-                   placeholder="Search logs..."
-                   className="logs-search"
-                   value={logSearch}
-                   onChange={(e) => setLogSearch(e.target.value)}
+                  type="text"
+                  placeholder="Search logs..."
+                  className="logs-search"
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
                 />
 
-              <select
+                <select
                   className="logs-filter"
                   value={logLevel}
                   onChange={(e) => setLogLevel(e.target.value)}
@@ -371,7 +511,7 @@ function App() {
                   <option value="Information">Information</option>
                   <option value="Warning">Warning</option>
                   <option value="Error">Error</option>
-              </select>
+                </select>
 
                 <select
                   className="logs-filter"
@@ -390,81 +530,90 @@ function App() {
 
               <div className="logs-panel">
 
-                  <div className="logs-table">
+                <div className="logs-table">
 
-                    <div className="logs-table-header">
-                      <span>Timestamp</span>
-                      <span>Level</span>
-                      <span>Source</span>
-                      <span>Event</span>
-                      <span>Agent</span>
-                    </div>
-
-                    {logsLoading ? (
-                      <div className="logs-empty">
-                        <strong>Loading logs...</strong>
-                        <span>Fetching security events from SentinelCM backend.</span>
-                      </div>
-                    ) : logsError ? (
-                      <div className="logs-empty">
-                        <strong>Failed to load logs</strong>
-                        <span>{logsError}</span>
-                      </div>
-                    ) : logs.length === 0 ? (
-                      <div className="logs-empty">
-                        <strong>No logs to display</strong>
-                        <span>No security events match the current filters.</span>
-                      </div>
-                    ) : (
-                      <div className="logs-table-body">
-
-                        {logs.map((log) => (
-
-                          <div className="logs-table-row" key={log._id}>
-
-                            <span className="log-timestamp">
-                              {new Date(log.timestamp).toLocaleString()}
-                            </span>
-
-                            <span>
-                              <strong className={`level-badge level-${log.level.toLowerCase()}`}>
-                                {log.level}
-                              </strong>
-                            </span>
-
-                            <span className="log-source">
-                              {log.source}
-                            </span>
-
-                            <span className="log-event">
-
-                              <strong>{log.log_name}</strong>
-
-                              <small title={log.message}>
-                                {log.message}
-                              </small>
-
-                            </span>
-
-                            <span
-                              className="log-agent"
-                              title={log.agent_id}
-                            >
-                              {log.agent_id
-                                ? `${log.agent_id.slice(0, 8)}...`
-                                : 'N/A'}
-                            </span>
-
-                          </div>
-
-                        ))}
-
-                      </div>
-                    )}
-
+                  <div className="logs-table-header">
+                    <span>Timestamp</span>
+                    <span>Level</span>
+                    <span>Source</span>
+                    <span>Event</span>
+                    <span>Agent</span>
                   </div>
 
+                  {logsLoading ? (
+                    <div className="logs-empty">
+                      <strong>Loading logs...</strong>
+                      <span>
+                        Fetching security events from SentinelCM backend.
+                      </span>
+                    </div>
+                  ) : logsError ? (
+                    <div className="logs-empty">
+                      <strong>Failed to load logs</strong>
+                      <span>{logsError}</span>
+                    </div>
+                  ) : logs.length === 0 ? (
+                    <div className="logs-empty">
+                      <strong>No logs to display</strong>
+                      <span>
+                        No security events match the current filters.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="logs-table-body">
+
+                      {logs.map((log) => (
+
+                        <div
+                          className="logs-table-row"
+                          key={log._id}
+                        >
+
+                          <span className="log-timestamp">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </span>
+
+                          <span>
+                            <strong
+                              className={`level-badge level-${log.level.toLowerCase()}`}
+                            >
+                              {log.level}
+                            </strong>
+                          </span>
+
+                          <span className="log-source">
+                            {log.source}
+                          </span>
+
+                          <span className="log-event">
+
+                            <strong>{log.log_name}</strong>
+
+                            <small title={log.message}>
+                              {log.message}
+                            </small>
+
+                          </span>
+
+                          <span
+                            className="log-agent"
+                            title={log.agent_id}
+                          >
+                            {log.agent_id
+                              ? `${log.agent_id.slice(0, 8)}...`
+                              : 'N/A'}
+                          </span>
+
+                        </div>
+
+                      ))}
+
+                    </div>
+                  )}
+
                 </div>
+
+              </div>
 
             </section>
           )}
@@ -478,4 +627,3 @@ function App() {
 }
 
 export default App
-
