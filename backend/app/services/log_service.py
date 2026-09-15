@@ -1,6 +1,7 @@
 import hashlib
 
 from app.models.log import get_log_collection
+from app.services.alert_service import create_alert_from_log
 
 
 def create_event_hash(log):
@@ -44,4 +45,6 @@ async def save_log(log):
 
     await logs.insert_one(document)
 
+    await create_alert_from_log(log)
+    
     return True
