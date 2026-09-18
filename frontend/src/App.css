@@ -1241,3 +1241,103 @@ button {
     padding: 34px 24px;
   }
 }
+
+/* Security Alerts Styling */
+.alerts-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.alert-card {
+  padding: 16px;
+  border-left-width: 5px;
+  border-left-style: solid;
+  transition: opacity 0.2s ease;
+}
+
+.alert-card.high-severity {
+  border-left-color: #ef4444;
+}
+
+.alert-card.medium-severity {
+  border-left-color: #f59e0b;
+}
+
+.alert-card.is-resolved {
+  opacity: 0.65;
+}
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.alert-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.severity-tag {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.severity-tag.high {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.severity-tag.medium {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.status-resolved {
+  font-size: 11px;
+  color: #10b981;
+  font-weight: bold;
+}
+
+.event-id-tag {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.alert-time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.alert-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.agent-id-text {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.btn-resolve {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: none;
+  background-color: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-resolve:hover {
+  background-color: #1d4ed8;
+}

@@ -21,6 +21,10 @@ function App() {
   const [logLevel, setLogLevel] = useState('all')
   const [logSource, setLogSource] = useState('all')
 
+  const [alerts, setAlerts] = useState([])
+const [alertsLoading, setAlertsLoading] = useState(false)
+const [alertsError, setAlertsError] = useState(null)
+
   /*
    * Central API helper
    *
@@ -177,6 +181,42 @@ function App() {
     logSource,
   ])
 
+/*
+ * Load Alerts
+ */
+useEffect(() => {
+  if (!isAuthenticated) return
+  if (activePage !== 'alerts') return
+
+  const fetchAlerts = async () => {
+    setAlertsLoading(true)
+    setAlertsError(null)
+
+    try {
+      const response = await apiFetch(`${API_URL}/alerts/`)
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      setAlerts(result.alerts || [])
+    } catch (err) {
+      if (err.message === 'Session expired. Please login again.') {
+        setAlertsError(null)
+      } else {
+        setAlertsError(err.message)
+      }
+    } finally {
+      setAlertsLoading(false)
+    }
+  }
+
+  fetchAlerts()
+}, [isAuthenticated, activePage])
+
+
   /*
    * Authentication check screen
    */
@@ -268,7 +308,12 @@ function App() {
               Live Logs
             </button>
 
-            <button className="nav-item">
+            <button
+              className={`nav-item ${
+                activePage === 'alerts' ? 'active' : ''
+              }`}
+              onClick={() => setActivePage('alerts')}
+              >
               <span className="nav-icon">!</span>
               Alerts
             </button>
@@ -617,6 +662,86 @@ function App() {
 
             </section>
           )}
+
+          {activePage === 'alerts' && (
+                  <div className="content-area">
+                    <div className="page-header">
+                      <div>
+                        <h2>Security Alerts</h2>
+                        <p className="subtitle">Real-time threat and log event alerts</p>
+                      </div>
+                    </div>
+
+                    {/* Loading & Error States */}
+                    {alertsLoading && <div className="state-message">Loading alerts...</div>}
+                    {alertsError && <div className="state-message error">{alertsError}</div>}
+
+                    {/* Empty State */}
+                    {!alertsLoading && !alertsError && alerts.length === 0 && (
+                      <div className="state-message">No alerts recorded yet.</div>
+                    )}
+
+                    {/* Alerts List */}
+                    {!alertsLoading && !alertsError && alerts.length > 0 && (
+                      <div className="alerts-container">
+                        {alerts.map((alert, index) => {
+                          const isHigh = alert.severity === 'High'
+                          return (
+                            <div 
+                              key={alert._id || index} 
+                              className={`card alert-card ${isHigh ? 'high-severity' : 'medium-severity'} ${alert.acknowledged ? 'is-resolved' : ''}`}
+                            >
+                              <div className="alert-header">
+                                <div className="alert-tags">
+                                  <span className={`severity-tag ${isHigh ? 'high' : 'medium'}`}>
+                                    {alert.severity}
+                                  </span>
+                                  <span className="badge">{alert.source}</span>
+                                  {alert.event_id && <span className="event-id-tag">Event ID: {alert.event_id}</span>}
+                                  {alert.acknowledged && (
+                                    <span className="status-resolved">✓ Resolved</span>
+                                  )}
+                                </div>
+                                <span className="alert-time">
+                                  {new Date(alert.timestamp).toLocaleString()}
+                                </span>
+                              </div>
+
+                              <h4 style={{ margin: '0 0 4px 0' }}>{alert.title}</h4>
+                              <p style={{ margin: 0, color: '#4b5563', fontSize: '14px' }}>{alert.message}</p>
+                              
+                              <div className="alert-footer">
+                                <span className="agent-id-text">
+                                  Agent: {alert.agent_id}
+                                </span>
+
+                                {!alert.acknowledged && (
+                                  <button
+                                    className="btn-resolve"
+                                    onClick={async () => {
+                                      try {
+                                        const res = await apiFetch(`${API_URL}/alerts/${alert._id}/acknowledge`, {
+                                          method: 'PATCH'
+                                        })
+                                        if (res.ok) {
+                                          setAlerts(prev => prev.map(a => a._id === alert._id ? { ...a, acknowledged: true } : a))
+                                        }
+                                      } catch (err) {
+                                        console.error("Failed to acknowledge alert", err)
+                                      }
+                                    }}
+                                  >
+                                    Mark as Resolved
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
         </main>
 
