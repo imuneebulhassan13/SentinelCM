@@ -16,6 +16,7 @@ from app.api.routes.alert import router as alert_router
 
 from app.api.routes.dashboard import router as dashboard_router
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.routes.config_baseline import router as config_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -58,6 +59,7 @@ app.include_router(heartbeat_router)
 app.include_router(log_router)
 app.include_router(alert_router)
 app.include_router(dashboard_router)
+app.include_router(config_router)
 
 @app.get("/")
 async def root():
