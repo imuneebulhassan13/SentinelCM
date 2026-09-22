@@ -48,7 +48,12 @@ def create_file_baseline(agent_id: str, target_file_path: str):
             f"{API_URL}/config/baseline", json=payload, timeout=5
         )
         if response.status_code == 200:
-            print(f"[Baseline] Saved successfully for: {abs_path}")
+            res_data = response.json()
+            msg = res_data.get("message", "Saved successfully")
+            version = res_data.get("version", 1)
+            print(f"[Baseline] {msg}")
+            print(f"           File: {abs_path}")
+            print(f"           Version: v{version}")
             print(f"           SHA-256: {file_hash}")
             return True
         else:
