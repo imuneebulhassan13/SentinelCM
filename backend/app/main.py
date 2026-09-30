@@ -17,6 +17,7 @@ from app.db.database import close_mongo_connection, connect_to_mongo
 from app.services.monitor_service import monitor_agents
 from app.services.syslog_service import start_syslog_server
 from app.api.routes.websocket import router as ws_router
+from app.api.routes.fim import router as fim_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,7 +61,7 @@ app.include_router(alert_router)
 app.include_router(dashboard_router)
 app.include_router(config_router)
 app.include_router(ws_router)
-
+app.include_router(fim_router)
 
 @app.get("/")
 async def root():

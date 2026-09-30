@@ -25,6 +25,14 @@ function App() {
   const [alertsLoading, setAlertsLoading] = useState(false)
   const [alertsError, setAlertsError] = useState(null)
 
+  const [agents, setAgents] = useState([])
+  const [agentsLoading, setAgentsLoading] = useState(false)
+  const [agentsError, setAgentsError] = useState(null)
+
+  const [baselines, setBaselines] = useState([])
+  const [baselinesLoading, setBaselinesLoading] = useState(false)
+  const [baselinesError, setBaselinesError] = useState(null)
+
   /*
    * Central API helper
    */
@@ -256,6 +264,74 @@ function App() {
   }, [isAuthenticated, activePage])
 
   /*
+   * Load Agents (with 5s live heartbeat polling)
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (activePage !== 'agents') return
+
+    const fetchAgents = async () => {
+      try {
+        const response = await apiFetch(`${API_URL}/agents/`)
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`)
+        }
+
+        const result = await response.json()
+        setAgents(result.agents || result || [])
+      } catch (err) {
+        if (err.message !== 'Session expired. Please login again.') {
+          setAgentsError(err.message)
+        }
+      } finally {
+        setAgentsLoading(false)
+      }
+    }
+
+    setAgentsLoading(true)
+    fetchAgents()
+
+    const interval = setInterval(() => {
+      fetchAgents()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [isAuthenticated, activePage])
+
+  /*
+   * Load Configuration Baselines
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+    if (activePage !== 'configuration') return
+
+    const fetchBaselines = async () => {
+      setBaselinesLoading(true)
+      setBaselinesError(null)
+
+      try {
+        const response = await apiFetch(`${API_URL}/fim/baselines`)
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`)
+        }
+
+        const result = await response.json()
+        setBaselines(result.baselines || result || [])
+      } catch (err) {
+        if (err.message !== 'Session expired. Please login again.') {
+          setBaselinesError(err.message)
+        }
+      } finally {
+        setBaselinesLoading(false)
+      }
+    }
+
+    fetchBaselines()
+  }, [isAuthenticated, activePage])
+
+  /*
    * Authentication check screen
    */
   if (authChecking) {
@@ -356,12 +432,22 @@ function App() {
           <div className="nav-section">
             <span className="nav-label">ASSETS</span>
 
-            <button className="nav-item">
+            <button
+              className={`nav-item ${
+                activePage === 'agents' ? 'active' : ''
+              }`}
+              onClick={() => setActivePage('agents')}
+            >
               <span className="nav-icon">▣</span>
               Agents
             </button>
 
-            <button className="nav-item">
+            <button
+              className={`nav-item ${
+                activePage === 'configuration' ? 'active' : ''
+              }`}
+              onClick={() => setActivePage('configuration')}
+            >
               <span className="nav-icon">◈</span>
               Configuration
             </button>
@@ -395,6 +481,8 @@ function App() {
               setError(null)
               setLogs([])
               setLogsError(null)
+              setAgents([])
+              setBaselines([])
             }}
           >
             Logout
@@ -411,7 +499,13 @@ function App() {
                 ? 'Security Overview'
                 : activePage === 'logs'
                 ? 'Live Logs'
-                : 'Security Alerts'}
+                : activePage === 'alerts'
+                ? 'Security Alerts'
+                : activePage === 'agents'
+                ? 'Monitored Agents'
+                : activePage === 'configuration'
+                ? 'Configuration Integrity (FIM)'
+                : 'SentinelCM Platform'}
             </h2>
 
             <p>
@@ -419,7 +513,13 @@ function App() {
                 ? 'Centralized monitoring status and system activity'
                 : activePage === 'logs'
                 ? 'Centralized security events collected from monitored agents'
-                : 'Real-time threat and log event alerts'}
+                : activePage === 'alerts'
+                ? 'Real-time threat and log event alerts'
+                : activePage === 'agents'
+                ? 'Real-time endpoint agent status, operating systems, and heartbeats'
+                : activePage === 'configuration'
+                ? 'Monitored baseline files, SHA-256 hashes, and version history'
+                : ''}
             </p>
           </div>
 
@@ -767,6 +867,197 @@ function App() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* AGENTS PAGE */}
+          {activePage === 'agents' && (
+            <section className="logs-page">
+              <div className="page-header">
+                <div>
+                  <h2>Monitored Agents</h2>
+                  <p>
+                    Real-time endpoint agent status, operating systems, and heartbeats
+                  </p>
+                </div>
+              </div>
+
+              <div className="logs-panel">
+                <div className="logs-table">
+                  <div
+                    className="logs-table-header"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.2fr 1.5fr 1.2fr 1fr 1fr 1.5fr',
+                      gap: '10px',
+                    }}
+                  >
+                    <span>Agent ID</span>
+                    <span>Hostname</span>
+                    <span>IP Address</span>
+                    <span>OS</span>
+                    <span>Status</span>
+                    <span>Last Heartbeat</span>
+                  </div>
+
+                  {agentsLoading ? (
+                    <div className="logs-empty">
+                      <strong>Loading agents...</strong>
+                    </div>
+                  ) : agentsError ? (
+                    <div className="logs-empty">
+                      <strong>Failed to load agents</strong>
+                      <span>{agentsError}</span>
+                    </div>
+                  ) : agents.length === 0 ? (
+                    <div className="logs-empty">
+                      <strong>No agents registered</strong>
+                      <span>Run the python agent script to register endpoints.</span>
+                    </div>
+                  ) : (
+                    <div className="logs-table-body">
+                      {agents.map((ag, idx) => (
+                        <div
+                          className="logs-table-row"
+                          key={ag._id || ag.agent_id || idx}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1.2fr 1.5fr 1.2fr 1fr 1fr 1.5fr',
+                            gap: '10px',
+                          }}
+                        >
+                          <span className="log-agent" title={ag.agent_id}>
+                            {ag.agent_id ? `${ag.agent_id.slice(0, 8)}...` : 'N/A'}
+                          </span>
+
+                          <span>
+                            <strong>{ag.hostname || 'Unknown'}</strong>
+                          </span>
+
+                          <span>{ag.ip_address || ag.ip || '127.0.0.1'}</span>
+
+                          <span>{ag.os || 'Windows'}</span>
+
+                          <span>
+                            <strong
+                              className={`level-badge level-${
+                                ag.status === 'online' ? 'information' : 'error'
+                              }`}
+                            >
+                              {ag.status || 'offline'}
+                            </strong>
+                          </span>
+
+                          <span className="log-timestamp">
+                            {ag.last_heartbeat || ag.last_seen || ag.timestamp
+                              ? new Date(
+                                  ag.last_heartbeat || ag.last_seen || ag.timestamp
+                                ).toLocaleString()
+                              : 'N/A'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* CONFIGURATION PAGE */}
+          {activePage === 'configuration' && (
+            <section className="logs-page">
+              <div className="page-header">
+                <div>
+                  <h2>Configuration Integrity (FIM)</h2>
+                  <p>
+                    Monitored baseline files, SHA-256 hashes, and version history
+                  </p>
+                </div>
+              </div>
+
+              <div className="logs-panel">
+                <div className="logs-table">
+                  <div
+                    className="logs-table-header"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1.5fr 1fr 2.5fr 1fr 1.5fr',
+                      gap: '10px',
+                    }}
+                  >
+                    <span>File Path</span>
+                    <span>Version</span>
+                    <span>SHA-256 Hash</span>
+                    <span>Status</span>
+                    <span>Timestamp</span>
+                  </div>
+
+                  {baselinesLoading ? (
+                    <div className="logs-empty">
+                      <strong>Loading baseline configurations...</strong>
+                    </div>
+                  ) : baselinesError ? (
+                    <div className="logs-empty">
+                      <strong>Failed to load baselines</strong>
+                      <span>{baselinesError}</span>
+                    </div>
+                  ) : baselines.length === 0 ? (
+                    <div className="logs-empty">
+                      <strong>No configuration baselines recorded</strong>
+                      <span>Agent will push baselines upon initialization.</span>
+                    </div>
+                  ) : (
+                    <div className="logs-table-body">
+                      {baselines.map((base, idx) => (
+                        <div
+                          className="logs-table-row"
+                          key={base._id || idx}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1.5fr 1fr 2.5fr 1fr 1.5fr',
+                            gap: '10px',
+                          }}
+                        >
+                          <span>
+                            <strong>
+                              {base.file_path || base.filename || 'config.json'}
+                            </strong>
+                          </span>
+
+                          <span>
+                            <strong className="badge">
+                              v{base.version || '1'}
+                            </strong>
+                          </span>
+
+                          <span className="log-agent" title={base.hash}>
+                            {base.hash ? `${base.hash.slice(0, 24)}...` : 'N/A'}
+                          </span>
+
+                          <span>
+                            <strong
+                              className={`level-badge level-${
+                                base.drift ? 'error' : 'information'
+                              }`}
+                            >
+                              {base.drift ? 'Drift Detected' : 'In Sync'}
+                            </strong>
+                          </span>
+
+                          <span className="log-timestamp">
+                            {base.created_at || base.timestamp
+                              ? new Date(
+                                  base.created_at || base.timestamp
+                                ).toLocaleString()
+                              : 'N/A'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
           )}
         </main>
       </div>
