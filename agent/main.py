@@ -56,10 +56,10 @@ else:
 while True:
 
     result = send_heartbeat(agent_id)
-
-    print(result)
-
-    time.sleep(HEARTBEAT_INTERVAL)
+    if result:
+        print(result)
+    else:
+        print("[Agent] Backend unreachable or timed out. Will retry in next loop...")
 
       
     from collectors.windows_events import read_events
@@ -89,6 +89,6 @@ while True:
 
         except Exception as e:
             print(f"{channel} Error: {e}")
-
+        time.sleep(5)
     from state.state_manager import load_state
     print(load_state())
