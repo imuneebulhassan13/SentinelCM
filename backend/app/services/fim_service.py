@@ -112,3 +112,41 @@ async def process_fim_check(agent_id: str, file_path: str, current_hash: str):
         "drift": True,
         "alert_triggered": True,
     }
+
+
+async def restore_baseline_service(agent_id: str, file_path: str):
+    """
+    Restores a baseline state by resetting the drift flag back to False,
+    updating baseline status, and recording an audit log event.
+    """
+    fim_col, logs_col, _ = get_collections()
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    existing = await fim_col.find_one(
+        {"agent_id": agent_id, "file_path": file_path}
+    )
+
+    if not existing:
+        return {"error": "Baseline record not found"}
+
+    await fim_col.update_one(
+        {"_id": existing["_id"]},
+        {"$set": {"drift": False, "updated_at": now_str}},
+    )
+
+    # Insert Info Audit Log
+    log_doc = {
+        "agent_id": agent_id,
+        "log_name": "Configuration Restored",
+        "message": f"Baseline for file '{file_path}' manually restored by Administrator.",
+        "level": "Information",
+        "source": "FIM Engine",
+        "timestamp": now_str,
+    }
+    await logs_col.insert_one(log_doc)
+
+    return {
+        "status": "Baseline Restored",
+        "file_path": file_path,
+        "drift": False,
+    }

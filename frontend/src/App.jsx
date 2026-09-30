@@ -964,101 +964,135 @@ function App() {
           )}
 
           {/* CONFIGURATION PAGE */}
-          {activePage === 'configuration' && (
-            <section className="logs-page">
-              <div className="page-header">
-                <div>
-                  <h2>Configuration Integrity (FIM)</h2>
-                  <p>
-                    Monitored baseline files, SHA-256 hashes, and version history
-                  </p>
-                </div>
-              </div>
-
-              <div className="logs-panel">
-                <div className="logs-table">
-                  <div
-                    className="logs-table-header"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1.5fr 1fr 2.5fr 1fr 1.5fr',
-                      gap: '10px',
-                    }}
-                  >
-                    <span>File Path</span>
-                    <span>Version</span>
-                    <span>SHA-256 Hash</span>
-                    <span>Status</span>
-                    <span>Timestamp</span>
+            {activePage === 'configuration' && (
+              <section className="logs-page">
+                <div className="page-header">
+                  <div>
+                    <h2>Configuration Integrity (FIM)</h2>
+                    <p>
+                      Monitored baseline files, SHA-256 hashes, and version history
+                    </p>
                   </div>
-
-                  {baselinesLoading ? (
-                    <div className="logs-empty">
-                      <strong>Loading baseline configurations...</strong>
-                    </div>
-                  ) : baselinesError ? (
-                    <div className="logs-empty">
-                      <strong>Failed to load baselines</strong>
-                      <span>{baselinesError}</span>
-                    </div>
-                  ) : baselines.length === 0 ? (
-                    <div className="logs-empty">
-                      <strong>No configuration baselines recorded</strong>
-                      <span>Agent will push baselines upon initialization.</span>
-                    </div>
-                  ) : (
-                    <div className="logs-table-body">
-                      {baselines.map((base, idx) => (
-                        <div
-                          className="logs-table-row"
-                          key={base._id || idx}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1.5fr 1fr 2.5fr 1fr 1.5fr',
-                            gap: '10px',
-                          }}
-                        >
-                          <span>
-                            <strong>
-                              {base.file_path || base.filename || 'config.json'}
-                            </strong>
-                          </span>
-
-                          <span>
-                            <strong className="badge">
-                              v{base.version || '1'}
-                            </strong>
-                          </span>
-
-                          <span className="log-agent" title={base.hash}>
-                            {base.hash ? `${base.hash.slice(0, 24)}...` : 'N/A'}
-                          </span>
-
-                          <span>
-                            <strong
-                              className={`level-badge level-${
-                                base.drift ? 'error' : 'information'
-                              }`}
-                            >
-                              {base.drift ? 'Drift Detected' : 'In Sync'}
-                            </strong>
-                          </span>
-
-                          <span className="log-timestamp">
-                            {base.created_at || base.timestamp
-                              ? new Date(
-                                  base.created_at || base.timestamp
-                                ).toLocaleString()
-                              : 'N/A'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
-              </div>
-            </section>
-          )}
+
+                <div className="logs-panel">
+                  <div className="logs-table">
+                    <div
+                      className="logs-table-header"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1.5fr 0.8fr 2fr 1.2fr 1.2fr 1fr',
+                        gap: '10px',
+                      }}
+                    >
+                      <span>File Path</span>
+                      <span>Version</span>
+                      <span>SHA-256 Hash</span>
+                      <span>Status</span>
+                      <span>Timestamp</span>
+                      <span>Action</span>
+                    </div>
+
+                    {baselinesLoading ? (
+                      <div className="logs-empty">
+                        <strong>Loading baseline configurations...</strong>
+                      </div>
+                    ) : baselinesError ? (
+                      <div className="logs-empty">
+                        <strong>Failed to load baselines</strong>
+                        <span>{baselinesError}</span>
+                      </div>
+                    ) : baselines.length === 0 ? (
+                      <div className="logs-empty">
+                        <strong>No configuration baselines recorded</strong>
+                        <span>Agent will push baselines upon initialization.</span>
+                      </div>
+                    ) : (
+                      <div className="logs-table-body">
+                        {baselines.map((base, idx) => (
+                          <div
+                            className="logs-table-row"
+                            key={base._id || idx}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1.5fr 0.8fr 2fr 1.2fr 1.2fr 1fr',
+                              gap: '10px',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <span>
+                              <strong>
+                                {base.file_path || base.filename || 'config.json'}
+                              </strong>
+                            </span>
+
+                            <span>
+                              <strong className="badge">
+                                v{base.version || '1'}
+                              </strong>
+                            </span>
+
+                            <span className="log-agent" title={base.hash}>
+                              {base.hash ? `${base.hash.slice(0, 18)}...` : 'N/A'}
+                            </span>
+
+                            <span>
+                              <strong
+                                className={`level-badge level-${
+                                  base.drift ? 'error' : 'information'
+                                }`}
+                              >
+                                {base.drift ? 'Drift Detected' : 'In Sync'}
+                              </strong>
+                            </span>
+
+                            <span className="log-timestamp">
+                              {base.created_at || base.timestamp
+                                ? new Date(
+                                    base.created_at || base.timestamp
+                                  ).toLocaleString()
+                                : 'N/A'}
+                            </span>
+
+                            <span>
+                              {base.drift && (
+                                <button
+                                  className="btn-resolve"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await apiFetch(`${API_URL}/fim/restore`, {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                          agent_id: base.agent_id,
+                                          file_path: base.file_path,
+                                        }),
+                                      })
+                                      if (res.ok) {
+                                        setBaselines((prev) =>
+                                          prev.map((b) =>
+                                            b._id === base._id ? { ...b, drift: false } : b
+                                          )
+                                        );
+                                      }
+                                    } catch (err) {
+                                      console.error('Failed to restore baseline', err)
+                                    }
+                                  }}
+                                >
+                                  Restore
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            )}
+          
         </main>
       </div>
     </div>
