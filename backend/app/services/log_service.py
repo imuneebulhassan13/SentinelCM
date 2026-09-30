@@ -1,5 +1,6 @@
 import hashlib
 
+from app.api.routes.websocket import manager
 from app.models.log import get_log_collection
 from app.services.alert_service import create_alert_from_log
 
@@ -15,9 +16,7 @@ def create_event_hash(log):
         f"{log.timestamp.isoformat()}"
     )
 
-    return hashlib.sha256(
-        raw_data.encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256(raw_data.encode("utf-8")).hexdigest()
 
 
 async def save_log(log):
@@ -25,9 +24,7 @@ async def save_log(log):
 
     event_hash = create_event_hash(log)
 
-    existing_log = await logs.find_one(
-        {"event_hash": event_hash}
-    )
+    existing_log = await logs.find_one({"event_hash": event_hash})
 
     if existing_log:
         return False
@@ -46,5 +43,23 @@ async def save_log(log):
     await logs.insert_one(document)
 
     await create_alert_from_log(log)
-    
+
+    # Broadcast to all active WebSocket clients for real-time dashboard updates
+    try:
+        await manager.broadcast(
+            {
+                "event_type": "NEW_LOG",
+                "data": {
+                    "agent_id": log.agent_id,
+                    "source": log.source,
+                    "level": log.level,
+                    "event_id": log.event_id,
+                    "message": log.message,
+                    "timestamp": str(log.timestamp),
+                },
+            }
+        )
+    except Exception as e:
+        print(f"[WebSocket Push Error] {e}")
+
     return True
