@@ -1,8 +1,21 @@
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import {
+  Cell,
+  Legend,
+  Bar,
+  BarChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import './App.css'
 import Login from './login.jsx'
 
 const API_URL = 'http://127.0.0.1:8000'
+const CHART_COLORS = ['#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6']
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -32,6 +45,42 @@ function App() {
   const [baselines, setBaselines] = useState([])
   const [baselinesLoading, setBaselinesLoading] = useState(false)
   const [baselinesError, setBaselinesError] = useState(null)
+
+  // Analytics State for Recharts
+  const [analytics, setAnalytics] = useState({
+    total_logs: 0,
+    severity_distribution: [],
+    top_sources: [],
+  })
+
+  /*
+   * CSV Export Utility
+   */
+  const exportToCSV = (dataList, filename = 'sentinelcm_export.csv') => {
+    if (!dataList || dataList.length === 0) return
+
+    const headers = Object.keys(dataList[0]).filter((key) => key !== '_id')
+    const csvRows = []
+
+    csvRows.push(headers.join(','))
+
+    for (const row of dataList) {
+      const values = headers.map((header) => {
+        const val = row[header] === undefined || row[header] === null ? '' : row[header]
+        return `"${String(val).replace(/"/g, '""')}"`
+      })
+      csvRows.push(values.join(','))
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   /*
    * Central API helper
@@ -144,30 +193,39 @@ function App() {
   }, [isAuthenticated])
 
   /*
-   * Load dashboard data
+   * Load dashboard data & analytics summary
    */
-  useEffect(() => {
+  const fetchDashboardData = async () => {
     if (!isAuthenticated) return
-
     setError(null)
 
-    apiFetch(`${API_URL}/dashboard/summary`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`API Error: ${response.status}`)
-        }
+    try {
+      const [sumRes, anaRes] = await Promise.all([
+        apiFetch(`${API_URL}/dashboard/summary`),
+        apiFetch(`${API_URL}/analytics/summary`),
+      ])
 
-        return response.json()
-      })
-      .then((result) => {
-        setData(result)
-      })
-      .catch((err) => {
-        if (err.message !== 'Session expired. Please login again.') {
-          setError(err.message)
-        }
-      })
-  }, [isAuthenticated])
+      if (sumRes.ok) {
+        const sumData = await sumRes.json()
+        setData(sumData)
+      }
+
+      if (anaRes.ok) {
+        const anaData = await anaRes.json()
+        setAnalytics(anaData)
+      }
+    } catch (err) {
+      if (err.message !== 'Session expired. Please login again.') {
+        setError(err.message)
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (activePage === 'dashboard') {
+      fetchDashboardData()
+    }
+  }, [isAuthenticated, activePage])
 
   /*
    * Load Live Logs
@@ -373,7 +431,7 @@ function App() {
   /*
    * Dashboard loading
    */
-  if (!data) {
+  if (!data && activePage === 'dashboard') {
     return (
       <div className="loading">
         <h2>SentinelCM</h2>
@@ -531,7 +589,7 @@ function App() {
 
         <main className="dashboard-main">
           {/* DASHBOARD PAGE */}
-          {activePage === 'dashboard' && (
+          {activePage === 'dashboard' && data && (
             <>
               <section className="stats-grid">
                 <div className="card">
@@ -570,7 +628,53 @@ function App() {
                 </div>
               </section>
 
-              <section className="dashboard-grid">
+              {/* VISUAL CHARTS SECTION */}
+              <div className="charts-grid">
+                <div className="panel chart-panel">
+                  <h3 className="chart-title">Log Severity Distribution</h3>
+                  {analytics.severity_distribution && analytics.severity_distribution.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <PieChart>
+                        <Pie
+                          data={analytics.severity_distribution}
+                          cx="50%"
+                          cy="45%"
+                          outerRadius={75}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {analytics.severity_distribution.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend verticalAlign="bottom" height={36} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="chart-empty-text">No analytics data available</p>
+                  )}
+                </div>
+
+                <div className="panel chart-panel">
+                  <h3 className="chart-title">Top Event Sources</h3>
+                  {analytics.top_sources && analytics.top_sources.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart data={analytics.top_sources} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                        <XAxis dataKey="source" stroke="#a0aec0" tick={{ fontSize: 12 }} />
+                        <YAxis stroke="#a0aec0" allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="events" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="chart-empty-text">No source breakdown data available</p>
+                  )}
+                </div>
+              </div>
+
+              <section className="dashboard-grid dashboard-grid-spacing">
                 <div className="panel">
                   <div className="panel-header">
                     <div>
@@ -636,13 +740,19 @@ function App() {
           {/* LIVE LOGS PAGE */}
           {activePage === 'logs' && (
             <section className="logs-page">
-              <div className="page-header">
+              <div className="page-header logs-header-flex">
                 <div>
                   <h2>Live Logs</h2>
                   <p>
                     Centralized security events collected from monitored agents
                   </p>
                 </div>
+                <button
+                  className="btn-export-csv"
+                  onClick={() => exportToCSV(logs, `sentinelcm_logs_${Date.now()}.csv`)}
+                >
+                  Export CSV
+                </button>
               </div>
 
               {/* Toolbar Filters */}
@@ -813,14 +923,8 @@ function App() {
                           </span>
                         </div>
 
-                        <h4 style={{ margin: '0 0 4px 0' }}>{alert.title}</h4>
-                        <p
-                          style={{
-                            margin: 0,
-                            color: '#4b5563',
-                            fontSize: '14px',
-                          }}
-                        >
+                        <h4 className="alert-title-text">{alert.title}</h4>
+                        <p className="alert-msg-text">
                           {alert.message}
                         </p>
 
@@ -883,14 +987,7 @@ function App() {
 
               <div className="logs-panel">
                 <div className="logs-table">
-                  <div
-                    className="logs-table-header"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1.2fr 1.5fr 1.2fr 1fr 1fr 1.5fr',
-                      gap: '10px',
-                    }}
-                  >
+                  <div className="logs-table-header agents-table-grid">
                     <span>Agent ID</span>
                     <span>Hostname</span>
                     <span>IP Address</span>
@@ -917,13 +1014,8 @@ function App() {
                     <div className="logs-table-body">
                       {agents.map((ag, idx) => (
                         <div
-                          className="logs-table-row"
+                          className="logs-table-row agents-table-grid"
                           key={ag._id || ag.agent_id || idx}
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1.2fr 1.5fr 1.2fr 1fr 1fr 1.5fr',
-                            gap: '10px',
-                          }}
                         >
                           <span className="log-agent" title={ag.agent_id}>
                             {ag.agent_id ? `${ag.agent_id.slice(0, 8)}...` : 'N/A'}
@@ -964,135 +1056,121 @@ function App() {
           )}
 
           {/* CONFIGURATION PAGE */}
-            {activePage === 'configuration' && (
-              <section className="logs-page">
-                <div className="page-header">
-                  <div>
-                    <h2>Configuration Integrity (FIM)</h2>
-                    <p>
-                      Monitored baseline files, SHA-256 hashes, and version history
-                    </p>
-                  </div>
+          {activePage === 'configuration' && (
+            <section className="logs-page">
+              <div className="page-header">
+                <div>
+                  <h2>Configuration Integrity (FIM)</h2>
+                  <p>
+                    Monitored baseline files, SHA-256 hashes, and version history
+                  </p>
                 </div>
+              </div>
 
-                <div className="logs-panel">
-                  <div className="logs-table">
-                    <div
-                      className="logs-table-header"
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1.5fr 0.8fr 2fr 1.2fr 1.2fr 1fr',
-                        gap: '10px',
-                      }}
-                    >
-                      <span>File Path</span>
-                      <span>Version</span>
-                      <span>SHA-256 Hash</span>
-                      <span>Status</span>
-                      <span>Timestamp</span>
-                      <span>Action</span>
+              <div className="logs-panel">
+                <div className="logs-table">
+                  <div className="logs-table-header baselines-table-grid">
+                    <span>File Path</span>
+                    <span>Version</span>
+                    <span>SHA-256 Hash</span>
+                    <span>Status</span>
+                    <span>Timestamp</span>
+                    <span>Action</span>
+                  </div>
+
+                  {baselinesLoading ? (
+                    <div className="logs-empty">
+                      <strong>Loading baseline configurations...</strong>
                     </div>
+                  ) : baselinesError ? (
+                    <div className="logs-empty">
+                      <strong>Failed to load baselines</strong>
+                      <span>{baselinesError}</span>
+                    </div>
+                  ) : baselines.length === 0 ? (
+                    <div className="logs-empty">
+                      <strong>No configuration baselines recorded</strong>
+                      <span>Agent will push baselines upon initialization.</span>
+                    </div>
+                  ) : (
+                    <div className="logs-table-body">
+                      {baselines.map((base, idx) => (
+                        <div
+                          className="logs-table-row baselines-table-grid align-center"
+                          key={base._id || idx}
+                        >
+                          <span>
+                            <strong>
+                              {base.file_path || base.filename || 'config.json'}
+                            </strong>
+                          </span>
 
-                    {baselinesLoading ? (
-                      <div className="logs-empty">
-                        <strong>Loading baseline configurations...</strong>
-                      </div>
-                    ) : baselinesError ? (
-                      <div className="logs-empty">
-                        <strong>Failed to load baselines</strong>
-                        <span>{baselinesError}</span>
-                      </div>
-                    ) : baselines.length === 0 ? (
-                      <div className="logs-empty">
-                        <strong>No configuration baselines recorded</strong>
-                        <span>Agent will push baselines upon initialization.</span>
-                      </div>
-                    ) : (
-                      <div className="logs-table-body">
-                        {baselines.map((base, idx) => (
-                          <div
-                            className="logs-table-row"
-                            key={base._id || idx}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '1.5fr 0.8fr 2fr 1.2fr 1.2fr 1fr',
-                              gap: '10px',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <span>
-                              <strong>
-                                {base.file_path || base.filename || 'config.json'}
-                              </strong>
-                            </span>
+                          <span>
+                            <strong className="badge">
+                              v{base.version || '1'}
+                            </strong>
+                          </span>
 
-                            <span>
-                              <strong className="badge">
-                                v{base.version || '1'}
-                              </strong>
-                            </span>
+                          <span className="log-agent" title={base.hash}>
+                            {base.hash ? `${base.hash.slice(0, 18)}...` : 'N/A'}
+                          </span>
 
-                            <span className="log-agent" title={base.hash}>
-                              {base.hash ? `${base.hash.slice(0, 18)}...` : 'N/A'}
-                            </span>
+                          <span>
+                            <strong
+                              className={`level-badge level-${
+                                base.drift ? 'error' : 'information'
+                              }`}
+                            >
+                              {base.drift ? 'Drift Detected' : 'In Sync'}
+                            </strong>
+                          </span>
 
-                            <span>
-                              <strong
-                                className={`level-badge level-${
-                                  base.drift ? 'error' : 'information'
-                                }`}
-                              >
-                                {base.drift ? 'Drift Detected' : 'In Sync'}
-                              </strong>
-                            </span>
+                          <span className="log-timestamp">
+                            {base.created_at || base.timestamp
+                              ? new Date(
+                                  base.created_at || base.timestamp
+                                ).toLocaleString()
+                              : 'N/A'}
+                          </span>
 
-                            <span className="log-timestamp">
-                              {base.created_at || base.timestamp
-                                ? new Date(
-                                    base.created_at || base.timestamp
-                                  ).toLocaleString()
-                                : 'N/A'}
-                            </span>
-
-                            <span>
-                              {base.drift && (
-                                <button
-                                  className="btn-resolve"
-                                  onClick={async () => {
-                                    try {
-                                      const res = await apiFetch(`${API_URL}/fim/restore`, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({
-                                          agent_id: base.agent_id,
-                                          file_path: base.file_path,
-                                        }),
-                                      })
-                                      if (res.ok) {
-                                        setBaselines((prev) =>
-                                          prev.map((b) =>
-                                            b._id === base._id ? { ...b, drift: false } : b
-                                          )
-                                        );
-                                      }
-                                    } catch (err) {
-                                      console.error('Failed to restore baseline', err)
+                          <span>
+                            {base.drift && (
+                              <button
+                                className="btn-resolve"
+                                onClick={async () => {
+                                  try {
+                                    const res = await apiFetch(`${API_URL}/fim/restore`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        agent_id: base.agent_id,
+                                        file_path: base.file_path,
+                                      }),
+                                    })
+                                    if (res.ok) {
+                                      setBaselines((prev) =>
+                                        prev.map((b) =>
+                                          b._id === base._id ? { ...b, drift: false } : b
+                                        )
+                                      )
                                     }
-                                  }}
-                                >
-                                  Restore
-                                </button>
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                                  } catch (err) {
+                                    console.error('Failed to restore baseline', err)
+                                  }
+                                }}
+                              >
+                                Restore
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </section>
-            )}
-          
+              </div>
+            </section>
+          )}
         </main>
       </div>
     </div>
