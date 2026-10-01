@@ -1,6 +1,7 @@
 from bson import ObjectId
 from fastapi import APIRouter, HTTPException
 from app.models.agent import get_agent_collection
+from app.services.audit_service import record_audit_log
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -80,6 +81,13 @@ async def get_all_alerts():
 @router.patch("/{alert_id}/acknowledge")
 async def acknowledge_alert(alert_id: str):
     alerts_col, logs_col = get_collections()
+    await record_audit_log(
+    user="Administrator",
+    action="ALERT_ACKNOWLEDGE",
+    resource=alert_id,
+    details=f"Acknowledged security alert ID: {alert_id}",
+    )
+    
     try:
         try:
             obj_id = ObjectId(alert_id)

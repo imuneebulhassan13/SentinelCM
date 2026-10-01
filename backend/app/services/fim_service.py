@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from app.api.routes.websocket import manager
 from app.models.agent import get_agent_collection
-
+from app.services.audit_service import record_audit_log
 
 def get_collections():
     agent_col = get_agent_collection()
@@ -104,6 +104,14 @@ async def process_fim_check(agent_id: str, file_path: str, current_hash: str):
 
 
 async def restore_baseline_service(agent_id: str, file_path: str):
+
+    await record_audit_log(
+    user="Administrator",
+    action="FIM_RESTORE",
+    resource=file_path,
+    details=f"Triggered baseline restoration for file: {file_path}",
+    )
+
     fim_col, logs_col, _ = get_collections()
     now_str = datetime.now(timezone.utc).isoformat()
 

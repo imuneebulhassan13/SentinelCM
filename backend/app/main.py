@@ -19,6 +19,7 @@ from app.core.logger import logger
 from app.db.database import close_mongo_connection, connect_to_mongo
 from app.services.monitor_service import monitor_agents
 from app.services.syslog_service import start_syslog_server
+from app.api.routes import audit
 
 
 @asynccontextmanager
@@ -66,6 +67,7 @@ app.include_router(config_router)
 app.include_router(ws_router)
 app.include_router(fim_router)
 app.include_router(analytics.router)
+app.include_router(audit.router)
 
 
 @app.get("/")
