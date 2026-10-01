@@ -166,10 +166,8 @@ function App() {
         if (payload.event_type === 'NEW_LOG') {
           const newEvent = payload.data
 
-          // Prepend new log to Live Logs state
           setLogs((prevLogs) => [newEvent, ...prevLogs])
 
-          // Prepend to Alerts state if Error/Critical/High level
           if (['Error', 'Critical', 'High'].includes(newEvent.level)) {
             setAlerts((prevAlerts) => [newEvent, ...prevAlerts])
           }
@@ -358,16 +356,13 @@ function App() {
   }, [isAuthenticated, activePage])
 
   /*
-   * Load Configuration Baselines
+   * Load Configuration Baselines (with 3s Polling for Real-Time Drift Detection)
    */
   useEffect(() => {
     if (!isAuthenticated) return
     if (activePage !== 'configuration') return
 
     const fetchBaselines = async () => {
-      setBaselinesLoading(true)
-      setBaselinesError(null)
-
       try {
         const response = await apiFetch(`${API_URL}/fim/baselines`)
 
@@ -386,7 +381,14 @@ function App() {
       }
     }
 
+    setBaselinesLoading(true)
     fetchBaselines()
+
+    const interval = setInterval(() => {
+      fetchBaselines()
+    }, 3000)
+
+    return () => clearInterval(interval)
   }, [isAuthenticated, activePage])
 
   /*
@@ -1094,77 +1096,123 @@ function App() {
                     </div>
                   ) : (
                     <div className="logs-table-body">
-                      {baselines.map((base, idx) => (
-                        <div
-                          className="logs-table-row baselines-table-grid align-center"
-                          key={base._id || idx}
-                        >
-                          <span>
-                            <strong>
-                              {base.file_path || base.filename || 'config.json'}
-                            </strong>
-                          </span>
+                      {baselines.map((base, idx) => {
+                        const isDrifted =
+                          base.drift === true ||
+                          base.status === 'Drift Detected'
 
-                          <span>
-                            <strong className="badge">
-                              v{base.version || '1'}
-                            </strong>
-                          </span>
+                        const filePath =
+                          base.file_path || base.filename || 'config.json'
 
-                          <span className="log-agent" title={base.hash}>
-                            {base.hash ? `${base.hash.slice(0, 18)}...` : 'N/A'}
-                          </span>
-
-                          <span>
-                            <strong
-                              className={`level-badge level-${
-                                base.drift ? 'error' : 'information'
-                              }`}
+                        return (
+                          <div
+                            className="logs-table-row baselines-table-grid align-center"
+                            key={base._id || idx}
+                          >
+                            <span
+                              style={{
+                                wordBreak: 'break-all',
+                                whiteSpace: 'normal',
+                                paddingRight: '8px',
+                              }}
+                              title={filePath}
                             >
-                              {base.drift ? 'Drift Detected' : 'In Sync'}
-                            </strong>
-                          </span>
+                              <strong style={{ fontSize: '13px' }}>
+                                {filePath}
+                              </strong>
+                            </span>
 
-                          <span className="log-timestamp">
-                            {base.created_at || base.timestamp
-                              ? new Date(
-                                  base.created_at || base.timestamp
-                                ).toLocaleString()
-                              : 'N/A'}
-                          </span>
+                            <span>
+                              <strong className="badge">
+                                v{base.version || '1'}
+                              </strong>
+                            </span>
 
-                          <span>
-                            {base.drift && (
-                              <button
-                                className="btn-resolve"
-                                onClick={async () => {
-                                  try {
-                                    const res = await apiFetch(`${API_URL}/fim/restore`, {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({
-                                        agent_id: base.agent_id,
-                                        file_path: base.file_path,
-                                      }),
-                                    })
-                                    if (res.ok) {
-                                      setBaselines((prev) =>
-                                        prev.map((b) =>
-                                          b._id === base._id ? { ...b, drift: false } : b
+                            <span
+                              className="log-agent"
+                              title={base.hash || base.current_hash}
+                            >
+                              {base.hash || base.current_hash
+                                ? `${(
+                                    base.hash || base.current_hash
+                                  ).slice(0, 14)}...`
+                                : 'N/A'}
+                            </span>
+
+                            <span>
+                              <strong
+                                className={`level-badge level-${
+                                  isDrifted ? 'error' : 'information'
+                                }`}
+                              >
+                                {isDrifted ? 'Drift Detected' : 'In Sync'}
+                              </strong>
+                            </span>
+
+                            <span className="log-timestamp">
+                              {base.updated_at ||
+                              base.created_at ||
+                              base.timestamp ||
+                              base.last_updated
+                                ? new Date(
+                                    base.updated_at ||
+                                      base.created_at ||
+                                      base.timestamp ||
+                                      base.last_updated
+                                  ).toLocaleString()
+                                : 'N/A'}
+                            </span>
+
+                            <span>
+                              {isDrifted ? (
+                                <button
+                                  className="btn-resolve"
+                                  onClick={async () => {
+                                    try {
+                                      const res = await apiFetch(
+                                        `${API_URL}/fim/restore`,
+                                        {
+                                          method: 'POST',
+                                          headers: {
+                                            'Content-Type':
+                                              'application/json',
+                                          },
+                                          body: JSON.stringify({
+                                            agent_id: base.agent_id,
+                                            file_path: filePath,
+                                          }),
+                                        }
+                                      )
+                                      if (res.ok) {
+                                        setBaselines((prev) =>
+                                          prev.map((b) =>
+                                            b._id === base._id
+                                              ? {
+                                                  ...b,
+                                                  drift: false,
+                                                  status: 'In Sync',
+                                                }
+                                              : b
+                                          )
                                         )
+                                      }
+                                    } catch (err) {
+                                      console.error(
+                                        'Failed to restore baseline',
+                                        err
                                       )
                                     }
-                                  } catch (err) {
-                                    console.error('Failed to restore baseline', err)
-                                  }
-                                }}
-                              >
-                                Restore
-                              </button>
-                            )}
-                          </span>
-                        </div>
-                      ))}
+                                  }}
+                                >
+                                  Restore
+                                </button>
+                              ) : (
+                                <span style={{ color: '#718096' }}>—</span>
+                              )}
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

@@ -16,6 +16,8 @@ async def get_all_baselines():
 
     for b in baselines:
         b["_id"] = str(b["_id"])
+        # Ensure UI fields alignment
+        b["status"] = "Drift Detected" if b.get("drift") else "In Sync"
 
     return baselines
 
@@ -32,32 +34,58 @@ async def process_fim_check(agent_id: str, file_path: str, current_hash: str):
         doc = {
             "agent_id": agent_id,
             "file_path": file_path,
+            "baseline_hash": current_hash,
             "hash": current_hash,
             "version": 1,
             "drift": False,
+            "restore_pending": False,
+            "status": "In Sync",
             "created_at": now_str,
             "updated_at": now_str,
         }
         await fim_col.insert_one(doc)
-        return {
-            "status": "Baseline Created",
-            "version": 1,
-            "drift": False,
-        }
+        return {"status": "Baseline Created", "version": 1, "drift": False}
 
-    if existing["hash"] == current_hash:
+    # Check if UI requested a Restore Command
+    if existing.get("restore_pending"):
         await fim_col.update_one(
             {"_id": existing["_id"]},
-            {"$set": {"drift": False, "updated_at": now_str}},
+            {
+                "$set": {
+                    "hash": existing.get("baseline_hash"),
+                    "current_hash": existing.get("baseline_hash"),
+                    "drift": False,
+                    "restore_pending": False,
+                    "status": "In Sync",
+                    "updated_at": now_str,
+                }
+            },
         )
         return {
             "status": "In Sync",
-            "version": existing.get("version", 1),
             "drift": False,
+            "action": "restore_required",
+            "target_hash": existing.get("baseline_hash")
         }
 
-    # Hash Mismatch -> Drift Detected!
-    new_version = existing.get("version", 1) + 1
+    baseline_hash = existing.get("baseline_hash", existing.get("hash"))
+
+    if current_hash == baseline_hash:
+        await fim_col.update_one(
+            {"_id": existing["_id"]},
+            {
+                "$set": {
+                    "hash": current_hash,
+                    "drift": False,
+                    "status": "In Sync",
+                    "updated_at": now_str,
+                }
+            },
+        )
+        return {"status": "In Sync", "version": existing.get("version", 1), "drift": False}
+
+    # Hash Mismatch -> Drift Detected
+    new_version = existing.get("version", 1) + (0 if existing.get("drift") else 1)
 
     await fim_col.update_one(
         {"_id": existing["_id"]},
@@ -66,59 +94,16 @@ async def process_fim_check(agent_id: str, file_path: str, current_hash: str):
                 "hash": current_hash,
                 "version": new_version,
                 "drift": True,
+                "status": "Drift Detected",
                 "updated_at": now_str,
             }
         },
     )
 
-    title = "File Integrity Drift Detected"
-    msg = f"Monitored file '{file_path}' hash modified! New Hash: {current_hash[:16]}..."
-
-    # 1. Save into Logs Collection (SIEM Event)
-    log_doc = {
-        "agent_id": agent_id,
-        "log_name": title,
-        "message": msg,
-        "level": "Error",
-        "source": "FIM Engine",
-        "timestamp": now_str,
-    }
-    log_res = await logs_col.insert_one(log_doc)
-    log_doc["_id"] = str(log_res.inserted_id)
-
-    # 2. Save into Alerts Collection (SIEM Alert)
-    alert_doc = {
-        "agent_id": agent_id,
-        "title": title,
-        "message": msg,
-        "severity": "High",
-        "level": "Error",
-        "source": "FIM Engine",
-        "acknowledged": False,
-        "timestamp": now_str,
-    }
-    alert_res = await alerts_col.insert_one(alert_doc)
-    alert_doc["_id"] = str(alert_res.inserted_id)
-
-    # 3. Real-Time Broadcast via WebSocket to UI
-    try:
-        await manager.broadcast({"event_type": "NEW_LOG", "data": alert_doc})
-    except Exception as ws_err:
-        print(f"[WebSocket Broadcast Error]: {ws_err}")
-
-    return {
-        "status": "Drift Detected",
-        "version": new_version,
-        "drift": True,
-        "alert_triggered": True,
-    }
+    return {"status": "Drift Detected", "version": new_version, "drift": True}
 
 
 async def restore_baseline_service(agent_id: str, file_path: str):
-    """
-    Restores a baseline state by resetting the drift flag back to False,
-    updating baseline status, and recording an audit log event.
-    """
     fim_col, logs_col, _ = get_collections()
     now_str = datetime.now(timezone.utc).isoformat()
 
@@ -129,24 +114,21 @@ async def restore_baseline_service(agent_id: str, file_path: str):
     if not existing:
         return {"error": "Baseline record not found"}
 
+    # Set restore_pending flag true for agent pull
     await fim_col.update_one(
         {"_id": existing["_id"]},
-        {"$set": {"drift": False, "updated_at": now_str}},
+        {"$set": {"restore_pending": True, "updated_at": now_str}},
     )
 
-    # Insert Info Audit Log
+    # SIEM Audit Log Entry
     log_doc = {
         "agent_id": agent_id,
-        "log_name": "Configuration Restored",
-        "message": f"Baseline for file '{file_path}' manually restored by Administrator.",
+        "log_name": "Configuration Restore Initiated",
+        "message": f"Administrator issued restore command for file '{file_path}'.",
         "level": "Information",
         "source": "FIM Engine",
         "timestamp": now_str,
     }
     await logs_col.insert_one(log_doc)
 
-    return {
-        "status": "Baseline Restored",
-        "file_path": file_path,
-        "drift": False,
-    }
+    return {"status": "Restore Command Queued", "file_path": file_path}

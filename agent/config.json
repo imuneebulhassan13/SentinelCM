@@ -1,3 +1,9 @@
 {
-    "agent_id": "e008760a-217d-456f-b354-9f8e3f00da4b"
+  "agent_id": "7314f370-f013-46fe-a647-253efcaeac73",
+  "backend_url": "http://127.0.0.1:8000",
+  "fim": {
+    "monitored_directories": [
+      "C:\\Windows\\System32\\drivers\\etc"
+    ]
+  }
 }

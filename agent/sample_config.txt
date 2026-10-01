@@ -1,0 +1,5 @@
+PORT=9000
+ENV=production
+SECRET_KEY=sentinel_cm_secure_key
+
+version test 5
