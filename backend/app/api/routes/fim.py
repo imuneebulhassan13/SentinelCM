@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.services.fim_service import (
     get_all_baselines,
     process_fim_check,
     restore_baseline_service,
 )
+from app.api.dependencies import verify_admin_role
 
 router = APIRouter(prefix="/fim", tags=["File Integrity Monitoring"])
 
@@ -37,8 +38,11 @@ async def check_file_integrity(payload: FIMCheckSchema):
 
 
 @router.post("/restore")
-async def restore_baseline(payload: FIMRestoreSchema):
-    """Endpoint to restore baseline status for a file."""
+async def restore_baseline(
+    payload: FIMRestoreSchema,
+    role: str = Depends(verify_admin_role)  # <-- RBAC Protection Added
+):
+    """Endpoint to restore baseline status for a file (Admin Only)."""
     result = await restore_baseline_service(
         payload.agent_id, payload.file_path
     )

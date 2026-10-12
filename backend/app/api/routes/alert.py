@@ -1,7 +1,8 @@
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.models.agent import get_agent_collection
 from app.services.audit_service import record_audit_log
+from app.api.dependencies import verify_admin_role  # <-- RBAC Import
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -79,13 +80,16 @@ async def get_all_alerts():
 
 
 @router.patch("/{alert_id}/acknowledge")
-async def acknowledge_alert(alert_id: str):
+async def acknowledge_alert(
+    alert_id: str,
+    role: str = Depends(verify_admin_role)  # <-- RBAC Middleware Injection
+):
     alerts_col, logs_col = get_collections()
     await record_audit_log(
-    user="Administrator",
-    action="ALERT_ACKNOWLEDGE",
-    resource=alert_id,
-    details=f"Acknowledged security alert ID: {alert_id}",
+        user=f"Admin User ({role})",
+        action="ALERT_ACKNOWLEDGE",
+        resource=alert_id,
+        details=f"Acknowledged security alert ID: {alert_id}",
     )
     
     try:
